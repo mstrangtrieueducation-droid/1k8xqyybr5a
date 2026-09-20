@@ -5,7 +5,7 @@ const stages = ['listen', 'map', 'talk', 'questions'];
 const labels = ['Nghe & điền script', 'Mindmap', 'Thuyết trình', 'Câu hỏi'];
 const student = window.ScienceSystem.getProfile();
 const storageKey = window.ScienceSystem.key(student);
-const empty = () => ({ answers: {}, responses: {}, firstAttempt: null, scriptSubmitted: false, mapDone: false, talkDone: false, questionsDone: false, lastStage: 'listen', speed: '1' });
+const empty = () => ({ answers: {}, responses: {}, firstAttempt: null, scoreReceipt: null, scriptSubmitted: false, mapDone: false, talkDone: false, questionsDone: false, lastStage: 'listen', speed: '1' });
 let state = empty();
 let storageOK = true;
 try {
@@ -19,6 +19,8 @@ let current = 'listen';
 let segmentEnd = null;
 let audio = null;
 let noticeTimer;
+let scoreStatus='idle';
+let submissionInFlight=null;
 
 function save() {
   try { localStorage.setItem(storageKey, JSON.stringify(state)); storageOK = true; }
@@ -50,7 +52,7 @@ function pauseFooter(next, caption) {
   return `<div class="stage-footer"><button class="secondary" data-pause>Để lần sau làm tiếp</button>${next ? `<button class="primary" data-stage="${next}">${caption}</button>` : ''}</div>`;
 }
 function gapHTML(g) {
-  const checked = state.scriptSubmitted;
+  const checked = !!state.scoreReceipt;
   const correct = logic.isCorrect(g, state.answers[g.id]);
   const n = g.answer.split(/\s+/).length;
   return `<label class="gap ${checked ? correct ? 'correct' : 'incorrect' : ''}"><sup>${g.id}</sup><span class="gap-stack"><input id="gap-${g.id}" data-gap="${g.id}" value="${esc(state.answers[g.id])}" aria-label="Ô trống ${g.id}, ${n} từ" placeholder="${n} từ" autocomplete="off" spellcheck="false" autocapitalize="off" style="--gap-width:${Math.max(110, Math.min(450, g.answer.length * 9 + 26))}px" ${checked ? `aria-describedby="feedback-${g.id}"` : ''}>${checked ? `<span class="gap-feedback" id="feedback-${g.id}">${correct ? '✓ Đúng' : 'Đáp án: ' + esc(g.answer)}</span>` : ''}</span></label>`;
@@ -61,9 +63,9 @@ function listenView() {
   const total = gaps.length;
   main.innerHTML = title(1, 'Nghe & điền script', `Điền <strong>${total} chỗ trống</strong> gồm từ khóa và những cụm diễn đạt hữu ích. Mỗi ô ghi số từ cần điền. Nghe từng đoạn; có thể dừng và làm tiếp vào lần khác.`) +
     `<section class="player"><div><strong>Audio bài học · ${lesson.durationLabel}</strong><span>Chỉ nghe âm thanh từ video bài 01</span><div class="audio-actions"><button id="play-all">Nghe toàn bài</button><label>Tốc độ <select id="speed" aria-label="Tốc độ audio"><option value="0.75">0,75×</option><option value="0.9">0,9×</option><option value="1">1×</option></select></label></div></div><audio id="audio" controls controlslist="nodownload" preload="metadata" src="assets/germs.mp3"></audio><p id="audio-error" role="status" hidden></p></section>` +
-    `<div class="progress-panel"><div><strong id="filled-count">${count}/${total} ô đã điền</strong><span>Điền đủ rồi kiểm tra để mở mindmap</span></div><progress id="script-progress" value="${count}" max="${total}" aria-label="Tiến độ điền script"></progress></div>` +
+    `<div class="progress-panel"><div><strong id="filled-count">${count}/${total} ô đã điền</strong><span>Điền đủ rồi nộp bài để ghi điểm và mở mindmap</span></div><progress id="script-progress" value="${count}" max="${total}" aria-label="Tiến độ điền script"></progress></div>` +
     `<form id="script-form">${lesson.chunks.map((c, i) => `<article class="script-card"><div class="chunk-head"><div><p class="eyebrow">ĐOẠN ${i + 1} · ${c.timeLabel}</p><h2>${esc(c.title)}</h2></div><button type="button" class="listen-button" data-play="${i}" aria-label="Nghe đoạn ${i + 1}: ${esc(c.title)}">▶ Nghe đoạn ${i + 1}</button></div><p class="script-text" lang="en">${c.parts.map(p => typeof p === 'string' ? esc(p) : gapHTML(p)).join('')}</p><div class="chunk-bottom"><button type="button" class="text-button" data-hint="${i}">Gợi ý chữ đầu</button><span class="hint" id="hint-${i}" hidden>${c.parts.filter(p => typeof p === 'object').map(p => p.id + ': ' + esc(p.answer.split(' ').map(w => w[0]+'…').join(' '))).join(' · ')}</span></div></article>`).join('')}
-    <div class="check-box" id="check-result" role="status">${state.scriptSubmitted ? `<strong>Đã kiểm tra: ${score}/${total} ô đúng.</strong><p>${score === total ? 'Em đã điền đúng toàn bộ script.' : 'Đọc lại đáp án dưới các ô chưa đúng và nghe lại đoạn đó.'} Mindmap đã mở để em học ở chặng tiếp theo.</p>` : '<strong>Hoàn thành script trước khi xem mindmap.</strong><p>Viết hoa, khoảng trắng thừa và dấu câu không làm em mất điểm.</p>'}</div><div class="stage-footer"><button type="button" class="secondary" data-pause>Lưu lại, làm tiếp lần sau</button><button type="submit" class="primary">${state.scriptSubmitted ? 'Kiểm tra lại script' : 'Kiểm tra script'}</button></div></form>` +
+    <div class="check-box" id="check-result" role="status">${state.scriptSubmitted ? `<strong>Đã kiểm tra: ${score}/${total} ô đúng.</strong><p>${score === total ? 'Em đã điền đúng toàn bộ script.' : 'Đọc lại đáp án dưới các ô chưa đúng và nghe lại đoạn đó.'} Mindmap đã mở để em học ở chặng tiếp theo.</p>` : '<strong>Hoàn thành script trước khi xem mindmap.</strong><p>Viết hoa, khoảng trắng thừa và dấu câu không làm em mất điểm.</p>'}</div><div class="stage-footer"><button type="button" class="secondary" data-pause>Lưu lại, làm tiếp lần sau</button><button type="submit" class="primary">${state.scoreReceipt ? 'Kiểm tra lại script' : scoreStatus === 'sending' ? 'Đang ghi điểm…' : 'Đã xong – Nộp bài'}</button></div></form>` +
     (state.scriptSubmitted ? `<div class="next-chapter"><span>Chặng 02 đã sẵn sàng. Em không cần làm ngay hôm nay.</span><button class="primary" data-stage="map">Mở mindmap →</button></div>` : '');
   audio = document.getElementById('audio');
   const speed = document.getElementById('speed'); speed.value = state.speed;
@@ -81,16 +83,29 @@ async function playAudio(start, end) {
   try { audio.currentTime = start; await audio.play(); }
   catch { notify('Em bấm nút phát trên thanh audio để cho phép nghe.'); }
 }
-function checkScript() {
+async function checkScript() {
+  if(submissionInFlight)return submissionInFlight;
   const missing = gaps.filter(g => !logic.normalize(state.answers[g.id]));
   if (missing.length) {
     notify(`Còn ${missing.length} ô chưa điền. Hoàn thành đủ ${gaps.length} ô để mở mindmap.`);
     document.getElementById('gap-' + missing[0].id)?.focus(); return { complete:false, missing:missing.length };
   }
   state.firstAttempt = logic.firstAttempt(lesson,state,crypto.randomUUID(),new Date().toISOString());
+  save();
+  if(!state.scoreReceipt)return sendScore();
   state.scriptSubmitted = true; save(); render();
   document.getElementById('check-result').scrollIntoView({ behavior:'smooth', block:'center' });
   return { complete:true, score:logic.score(lesson, state), total:gaps.length };
+}
+async function sendScore(){
+  if(submissionInFlight)return submissionInFlight;
+  if(state.scoreReceipt||!state.firstAttempt)return;
+  scoreStatus='sending';save();render();
+  submissionInFlight=(async()=>{
+    try{const receipt=await window.ScienceSystem.submitScore(student,state.firstAttempt);state.scoreReceipt=receipt;state.scriptSubmitted=true;scoreStatus='saved';save();render();notify('Đã ghi điểm nghe. Mindmap đã mở; em có thể học tiếp vào ngày khác.');}
+    catch(error){scoreStatus='error';state.scriptSubmitted=false;save();render();notify('Chưa xác nhận ghi được điểm. Bài làm vẫn được giữ để gửi lại.');}
+    finally{submissionInFlight=null;}
+  })();return submissionInFlight;
 }
 function mapView() {
   main.innerHTML = title(2, 'Nhìn mindmap. Kể lại.', 'Bắt đầu từ ý chính ở giữa, rồi đi theo từng nhánh. Dùng từ khóa để nói bằng lời của em; không cần học thuộc cả script.') +
@@ -115,7 +130,7 @@ function talkView() {
 }
 function questionsView() {
   main.innerHTML = title(4, 'Think & answer', 'Trả lời 5 câu hỏi bằng câu tiếng Anh đầy đủ. Em có thể gõ câu trả lời dở, nghỉ và tiếp tục vào lần sau.') +
-    `<form id="questions-form">${lesson.questions.map((q,i) => `<article class="question-card"><label for="question-${i}"><span class="q-number">${i+1}</span><strong lang="en">${esc(q.text)}</strong></label><textarea id="question-${i}" data-question="${i}" rows="3" placeholder="Write your answer here…" lang="en">${esc(state.responses[i])}</textarea><details><summary>Gợi ý cách suy nghĩ</summary><p>${esc(q.hint)}</p></details></article>`).join('')}<div class="info-note">Câu hỏi mở được lưu để em luyện và cô xem nội dung. Bản thử không tự chấm đúng/sai và chưa gửi câu trả lời ra ngoài.</div><div class="stage-footer"><button type="button" class="secondary" data-pause>Lưu lại, làm tiếp lần sau</button><button type="submit" class="primary">Hoàn thành phần trả lời</button></div></form>${state.questionsDone ? `<div class="unlocked"><span>✓</span><div><strong>Em đã hoàn thành phần luyện tập của 4 chặng!</strong><small>Tiến độ đã lưu trên trình duyệt này. Kiểm tra trang xác nhận của Form để chắc chắn điểm nghe và hai video đã được gửi.</small></div></div>` : ''}`;
+    `<form id="questions-form">${lesson.questions.map((q,i) => `<article class="question-card"><label for="question-${i}"><span class="q-number">${i+1}</span><strong lang="en">${esc(q.text)}</strong></label><textarea id="question-${i}" data-question="${i}" rows="3" placeholder="Write your answer here…" lang="en">${esc(state.responses[i])}</textarea><details><summary>Gợi ý cách suy nghĩ</summary><p>${esc(q.hint)}</p></details></article>`).join('')}<div class="info-note">Câu hỏi mở được lưu để em luyện và cô xem nội dung. Bản thử không tự chấm đúng/sai và chưa gửi câu trả lời ra ngoài.</div><div class="stage-footer"><button type="button" class="secondary" data-pause>Lưu lại, làm tiếp lần sau</button><button type="submit" class="primary">Hoàn thành phần trả lời</button></div></form>${state.questionsDone ? `<div class="unlocked"><span>✓</span><div><strong>Em đã hoàn thành phần luyện tập của 4 chặng!</strong><small>Tiến độ đã lưu trên trình duyệt này. Điểm nghe đã tự ghi. Kiểm tra trang xác nhận của Form cho hai video đã gửi.</small></div></div>` : ''}`;
   document.getElementById('questions-form').onsubmit = event => {
     event.preventDefault();
     const missing = lesson.questions.findIndex((q,i) => !String(state.responses[i] || '').trim());
@@ -141,8 +156,10 @@ function render() {
     const scoreBox = document.createElement('section'); scoreBox.className = 'first-score';
     scoreBox.innerHTML = `<div><p class="eyebrow">KẾT QUẢ TRƯỚC KHI XEM ĐÁP ÁN</p><strong>${state.firstAttempt.score}/${state.firstAttempt.total}</strong><span>${state.firstAttempt.score10.toLocaleString('vi-VN')} / 10 điểm</span></div><p>Mỗi ô đúng trọn từ hoặc cụm được 1 điểm. Điểm /10 = số ô đúng ÷ 30 × 10. Chữa lại bên dưới không thay đổi điểm lần đầu.</p>`;
     document.getElementById('check-result').before(scoreBox);
-    scoreBox.after(window.ScienceSystem.scorePanel(student,state.firstAttempt));
+    scoreBox.after(window.ScienceSystem.scorePanel(student,state.firstAttempt,state.scoreReceipt,scoreStatus));
   }
+  if(document.getElementById('retry-score'))document.getElementById('retry-score').onclick=sendScore;
+  if(scoreStatus==='sending'){main.querySelectorAll('[data-gap],#script-form button[type=submit]').forEach(e=>e.disabled=true);}
   save();
   document.getElementById('copy-stage').onclick = async () => {
     const url = new URL(location.href); url.searchParams.set('stage',current); url.hash = '';
@@ -191,7 +208,9 @@ document.addEventListener('click', event => {
   }
 });
 window.addEventListener('popstate',() => navigate(new URL(location.href).searchParams.get('stage') || 'listen',false));
+if(!state.scoreReceipt)state.scriptSubmitted=false;
 navigate(new URL(location.href).searchParams.get('stage') || state.lastStage,false);
+if(student&&state.firstAttempt&&!state.scoreReceipt)sendScore();
 if (document.modelContext?.registerTool) {
   const controller = new AbortController();
   try {
