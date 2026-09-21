@@ -2,7 +2,7 @@
 const lesson = window.SCIENCE_LESSON;
 const logic = window.LessonLogic;
 const stages = ['listen', 'map', 'talk', 'questions'];
-const labels = ['Nghe & điền script', 'Mindmap', 'Thuyết trình', 'Câu hỏi'];
+const labels = ['Nghe & điền script', 'Mindmap', 'Thuyết trình', 'Đọc hiểu & nói'];
 const student = window.ScienceSystem.getProfile();
 const storageKey = window.ScienceSystem.key(student);
 const empty = () => ({ answers: {}, responses: {}, firstAttempt: null, scoreReceipt: null, scriptSubmitted: false, mapDone: false, talkDone: false, questionsDone: false, lastStage: 'listen', speed: '1' });
@@ -41,7 +41,7 @@ function nav() {
   document.getElementById('steps').innerHTML = stages.map((s, i) => {
     const permitted = logic.allowed(lesson, state, s);
     const done = [state.scriptSubmitted, state.mapDone, state.talkDone, state.questionsDone][i];
-    const status = done ? 'Đã hoàn thành' : s === current ? 'Đang làm' : permitted ? 'Có thể bắt đầu' : `Hoàn thành chặng ${i} để mở`;
+    const status = done ? (s === 'questions' ? 'Đã lưu bản nháp' : 'Đã hoàn thành') : s === current ? 'Đang làm' : permitted ? 'Có thể bắt đầu' : `Hoàn thành chặng ${i} để mở`;
     return `<button class="step ${s === current ? 'active' : ''}" data-stage="${s}" ${!permitted ? 'disabled' : ''} ${s === current ? 'aria-current="step"' : ''}><span>${done ? '✓' : '0' + (i + 1)}</span><div>${labels[i]}<small>${status}</small></div></button>`;
   }).join('');
 }
@@ -122,20 +122,20 @@ function mapView() {
 function talkView() {
   main.innerHTML = title(3, 'Your turn to teach!', 'Quay một video thuyết trình bằng tiếng Anh về germs. Thời lượng gợi ý: 1–2 phút. Em được nhìn mindmap để nhớ ý.') +
     `<section class="speaking-card"><p class="eyebrow">BÀI NÓI CỦA EM</p><h2>A Closer Look at Germs</h2><div class="speaking-plan"><div><span>01</span><h3>Introduce</h3><p>“Today, I’m going to talk about germs.”</p></div><div><span>02</span><h3>Explain</h3><p>Giải thích germs, diseases và cách bảo vệ bản thân theo mindmap.</p></div><div><span>03</span><h3>Connect</h3><p>Nêu 2 việc em làm hằng ngày để giúp ngăn germs lây lan.</p></div><div><span>04</span><h3>Close</h3><p>“These habits can help us stay healthy. Thank you for listening.”</p></div></div><button class="secondary" data-stage="map">Xem lại mindmap</button></section>
-    <section class="practice"><h2>Trước khi quay</h2><ul class="plain-list"><li>Nói thành câu đầy đủ, theo thứ tự rõ ràng.</li><li>Nhìn vào camera, nói đủ to và không đọc nguyên script.</li><li>Quay bằng điện thoại hoặc ứng dụng camera; xem lại để kiểm tra tiếng và hình.</li></ul><div class="info-note">Bản thử chưa có nơi nhận video. Em giữ lại file đã quay; nút dưới đây chỉ lưu tiến độ trên thiết bị này.</div><label class="tick"><input type="checkbox" id="talk-check" ${state.talkDone ? 'checked' : ''}> Em đã quay xong và xem lại video thuyết trình.</label><button class="primary" id="finish-talk">Lưu: đã quay thuyết trình</button></section>${pauseFooter(state.talkDone ? 'questions' : null, 'Sang phần câu hỏi →')}`;
+    <section class="practice"><h2>Trước khi quay</h2><ul class="plain-list"><li>Nói thành câu đầy đủ, theo thứ tự rõ ràng.</li><li>Nhìn vào camera, nói đủ to và không đọc nguyên script.</li><li>Quay bằng điện thoại hoặc ứng dụng camera; xem lại để kiểm tra tiếng và hình.</li></ul><div class="info-note">Em nộp video qua Form bên dưới. Nút đánh dấu đã quay chỉ lưu tiến độ trên thiết bị này.</div><label class="tick"><input type="checkbox" id="talk-check" ${state.talkDone ? 'checked' : ''}> Em đã quay xong và xem lại video thuyết trình.</label><button class="primary" id="finish-talk">Lưu: đã quay thuyết trình</button></section>${pauseFooter(state.talkDone ? 'questions' : null, 'Sang đọc hiểu & nói →')}`;
   document.getElementById('finish-talk').onclick = () => {
     if (!document.getElementById('talk-check').checked) { notify('Quay và xem lại video trước khi đánh dấu hoàn thành nhé.'); return; }
     state.talkDone = true; save(); render(); notify('Đã lưu tiến độ thuyết trình. Việc nộp video được xác nhận riêng trong Google Form.');
   };
 }
 function questionsView() {
-  main.innerHTML = title(4, 'Think & answer', 'Trả lời 5 câu hỏi bằng câu tiếng Anh đầy đủ. Em có thể gõ câu trả lời dở, nghỉ và tiếp tục vào lần sau.') +
-    `<form id="questions-form">${lesson.questions.map((q,i) => `<article class="question-card"><label for="question-${i}"><span class="q-number">${i+1}</span><strong lang="en">${esc(q.text)}</strong></label><textarea id="question-${i}" data-question="${i}" rows="3" placeholder="Write your answer here…" lang="en">${esc(state.responses[i])}</textarea><details><summary>Gợi ý cách suy nghĩ</summary><p>${esc(q.hint)}</p></details></article>`).join('')}<div class="info-note">Câu hỏi mở được lưu để em luyện và cô xem nội dung. Bản thử không tự chấm đúng/sai và chưa gửi câu trả lời ra ngoài.</div><div class="stage-footer"><button type="button" class="secondary" data-pause>Lưu lại, làm tiếp lần sau</button><button type="submit" class="primary">Hoàn thành phần trả lời</button></div></form>${state.questionsDone ? `<div class="unlocked"><span>✓</span><div><strong>Em đã hoàn thành phần luyện tập của 4 chặng!</strong><small>Tiến độ đã lưu trên trình duyệt này. Điểm nghe đã tự ghi. Kiểm tra trang xác nhận của Form cho hai video đã gửi.</small></div></div>` : ''}`;
+  main.innerHTML = title(4, 'Đọc hiểu & trình bày câu trả lời', 'Đọc lại script và trả lời 5 câu hỏi bằng tiếng Anh. Sau đó quay một video riêng, lần lượt nói số câu và trình bày câu trả lời đầy đủ. Bản gõ là phần chuẩn bị; bài nộp của chặng này là video trả lời đọc hiểu.') +
+    `<section class="practice reading-source"><h2>Bài đọc: A Closer Look at Germs</h2><details><summary>Mở script đầy đủ để đọc lại</summary>${lesson.chunks.map(c => `<h3 lang="en">${esc(c.title)}</h3><p lang="en">${c.parts.map(p => esc(typeof p === 'string' ? p : p.answer)).join('')}</p>`).join('')}</details></section><section class="practice"><h2>Video 2 · Trình bày câu trả lời đọc hiểu</h2><details class="original-questions"><summary>Xem bộ câu hỏi gốc của cô</summary><img src="assets/questions-original.jpg" alt="Bộ 5 câu hỏi gốc cho G3 Video 1: A Closer Look at Germs" loading="lazy"></details><ol><li>Đọc script và suy nghĩ câu trả lời. Em có thể ghi nháp bên dưới nếu cần.</li><li>Quay một video: nói “Question one”, trả lời câu 1, rồi tiếp tục đến câu 5.</li><li>Nói thành câu bằng lời của em; giải thích lí do hoặc ví dụ khi câu hỏi yêu cầu.</li><li>Xem lại tiếng, hình và nộp video qua nút Form của chặng này.</li></ol><p>Video này nộp riêng với Video 1 · Thuyết trình theo mindmap. Em có thể quay hai phần vào hai ngày khác nhau.</p></section>` +
+    `<form id="questions-form">${lesson.questions.map((q,i) => `<article class="question-card"><label for="question-${i}"><span class="q-number">${i+1}</span><strong lang="en">${esc(q.text)}</strong></label><textarea id="question-${i}" data-question="${i}" rows="3" placeholder="Optional notes for your spoken answer…" lang="en">${esc(state.responses[i])}</textarea><details><summary>Gợi ý cách suy nghĩ</summary><p>${esc(q.hint)}</p></details></article>`).join('')}<div class="info-note">Câu trả lời nháp được lưu trên thiết bị để em luyện nói, không tự chấm điểm. Em quay phần trả lời và gửi video qua Form để cô xem, nhận xét.</div><div class="stage-footer"><button type="button" class="secondary" data-pause>Lưu lại, làm tiếp lần sau</button><button type="submit" class="primary">Lưu bản nháp luyện nói</button></div></form>${state.questionsDone ? `<div class="unlocked"><span>✓</span><div><strong>Đã lưu bản nháp đủ 5 câu trả lời.</strong><small>Tiến độ đã lưu trên trình duyệt này. Điểm nghe đã tự ghi. Kiểm tra trang xác nhận của Form cho hai video đã gửi.</small></div></div>` : ''}`;
   document.getElementById('questions-form').onsubmit = event => {
     event.preventDefault();
     const missing = lesson.questions.findIndex((q,i) => !String(state.responses[i] || '').trim());
-    if (missing !== -1) { notify('Em hoàn thành đủ 5 câu trả lời nhé.'); document.getElementById('question-' + missing).focus(); return; }
-    state.questionsDone = true; save(); render(); notify('Đã lưu đủ 5 câu trả lời trên thiết bị này.');
+    state.questionsDone = missing === -1; save(); render(); notify('Đã lưu bản nháp trên thiết bị. Em nộp video trả lời đọc hiểu qua Form.');
   };
 }
 function render() {
@@ -150,7 +150,7 @@ function render() {
   }
   if (current === 'questions') {
     main.querySelector('.info-note').after(window.ScienceSystem.videoPanel(student,'questions'));
-    main.querySelector('.info-note').textContent='Phần gõ dưới mỗi câu là bản nháp luyện nói và được lưu trên thiết bị. Khi sẵn sàng, quay video trả lời đủ 5 câu rồi nộp qua Form riêng của chặng này.';
+    main.querySelector('.info-note').textContent='Phần gõ dưới mỗi câu chỉ là bản nháp luyện nói trên thiết bị, chưa phải bài đã nộp. Khi sẵn sàng, quay video trình bày đủ 5 câu trả lời đọc hiểu rồi bấm Mở Form nộp video đọc hiểu. Cô sẽ xem video và nhận xét.';
   }
   if (current === 'listen' && state.firstAttempt) {
     const scoreBox = document.createElement('section'); scoreBox.className = 'first-score';
