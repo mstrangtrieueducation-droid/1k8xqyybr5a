@@ -273,5 +273,15 @@ window.SCIENCE_LESSON = {
       "text": "Why should you stay home when you are sick?",
       "hint": "Trả lời đủ hai ý: lợi ích cho bản thân và cho người khác."
     }
+  ],
+  "number": 1,
+  "audio": "assets/germs.mp3",
+  "mindmap": "assets/mindmap.png",
+  "questionsImage": "assets/questions-original.jpg",
+  "speakingPoints": [
+    "Explain what germs are and why we need a microscope to see them.",
+    "Describe how germs cause illnesses and spread from person to person.",
+    "Explain how vaccines and everyday habits help protect us.",
+    "Give examples of ways to stop the spread of germs."
   ]
 };

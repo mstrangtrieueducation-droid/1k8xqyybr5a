@@ -38,3 +38,5 @@ h2{font-size:27px;line-height:1.45}h3{font-size:23px;line-height:1.5}
 .reading-source details p{font-size:20px;line-height:1.9;color:var(--ink)}
 
 .original-questions img{display:block;width:100%;height:auto;margin:18px auto}.original-questions{margin:18px 0}
+
+.source-question-list{padding-left:1.6em}.source-question-list li{font-size:22px;font-weight:700;line-height:1.8;margin:22px 0}.speaking-card li{margin:12px 0}details.practice>summary{font-weight:700;font-size:19px}@media(max-width:760px){nav{grid-template-columns:repeat(3,minmax(0,1fr))}.source-question-list li{font-size:20px}}
