@@ -9,7 +9,7 @@ window.SCIENCE_LESSON = {
   "mindmap": "59f319989faf/mindmap.png",
   "questionsImage": "59f319989faf/questions.jpg",
   "speakingPoints": [
-    "Behaviors from birth",
+    "Behaviors without lessons",
     "Learning is different",
     "Caterpillars feed",
     "Baby birds respond",
