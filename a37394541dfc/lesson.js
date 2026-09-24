@@ -176,7 +176,7 @@ window.SCIENCE_LESSON = {
           "id": 20,
           "answer": "They have many roots going out"
         },
-        ". little branches. Now let's look closely at a root. If I take this bean plant, I pull it out of the pot, we can see this ",
+        "—little branches. Now let's look closely at a root. If I take this bean plant, I pull it out of the pot, we can see this ",
         {
           "id": 21,
           "answer": "whole network of roots"
@@ -219,17 +219,17 @@ window.SCIENCE_LESSON = {
       "end": 343.23,
       "timeLabel": "4:45–5:43",
       "parts": [
-        "Now some plants are very unique take for example the roots of this orchid plant Now orchid plants have ",
+        "Now some plants are very unique. Take for example the roots of this orchid plant. Now orchid plants have ",
         {
           "id": 26,
           "answer": "roots that grow in the ground"
         },
-        " They also have roots that grow out they grow up into the air Some plants have aerial roots ",
+        ". They also have roots that grow out; they grow up into the air. Some plants have aerial roots; ",
         {
           "id": 27,
           "answer": "aerial roots grow above the ground"
         },
-        " So these roots that grow above the ground they grow up in the air are called Aerial roots. Sounds kind of like air, aerial. ",
+        ". So these roots that grow above the ground, they grow up in the air, are called Aerial roots. Sounds kind of like air, aerial. ",
         {
           "id": 28,
           "answer": "These roots grow up in the air"
