@@ -14,7 +14,8 @@ try {
 } catch { storageOK = false; }
 // Read the confirmed dashboard result separately; never invent answers or an attempt.
 state.student=student;
-state.dashboardReceipt=student&&window.ScienceResume?window.ScienceResume.read(localStorage,student,lesson.id.toUpperCase()):null;
+state.dashboardReceipt=null;
+try{if(student&&window.ScienceResume)state.dashboardReceipt=window.ScienceResume.read(localStorage,student,lesson.id.toUpperCase());}catch{storageOK=false;}
 const main = document.getElementById('main');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const gaps = logic.getGaps(lesson);
