@@ -12,6 +12,9 @@ try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
   if (saved && typeof saved === 'object') state = { ...state, ...saved, answers: saved.answers && typeof saved.answers === 'object' ? saved.answers : {}, responses: saved.responses && typeof saved.responses === 'object' ? saved.responses : {} };
 } catch { storageOK = false; }
+// Read the confirmed dashboard result separately; never invent answers or an attempt.
+state.student=student;
+state.dashboardReceipt=student&&window.ScienceResume?window.ScienceResume.read(localStorage,student,lesson.id.toUpperCase()):null;
 const main = document.getElementById('main');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const gaps = logic.getGaps(lesson);
@@ -40,7 +43,7 @@ function notify(text) {
 function nav() {
   document.getElementById('steps').innerHTML = stages.map((s, i) => {
     const permitted = logic.allowed(lesson, state, s);
-    const done = i === 0 && !!state.scoreReceipt;
+    const done = i === 0 && (!!state.scoreReceipt || !!state.dashboardReceipt);
     const status = done ? (s === 'questions' ? 'Đã lưu bản nháp' : 'Đã hoàn thành') : s === current ? 'Đang làm' : permitted ? 'Có thể bắt đầu' : 'Nộp script để mở';
     return `<button class="step ${s === current ? 'active' : ''}" data-stage="${s}" ${!permitted ? 'disabled' : ''} ${s === current ? 'aria-current="step"' : ''}><span>${done ? '✓' : '0' + (i + 1)}</span><div>${labels[i]}<small>${status}</small></div></button>`;
   }).join('');
@@ -58,6 +61,12 @@ function gapHTML(g) {
   return `<label class="gap ${checked ? correct ? 'correct' : 'incorrect' : ''}"><sup>${g.id}</sup><span class="gap-stack"><input id="gap-${g.id}" data-gap="${g.id}" value="${esc(state.answers[g.id])}" aria-label="Ô trống ${g.id}, ${n} từ" placeholder="${n} từ" autocomplete="off" spellcheck="false" autocapitalize="off" style="--gap-width:${Math.max(110, Math.min(450, g.answer.length * 9 + 26))}px" ${checked ? `aria-describedby="feedback-${g.id}"` : ''}>${checked ? `<span class="gap-feedback" id="feedback-${g.id}">${correct ? '✓ Đúng' : 'Đáp án: ' + esc(g.answer)}</span>` : ''}</span></label>`;
 }
 function listenView() {
+  if(state.dashboardReceipt&&!state.scoreReceipt){
+    const receipt=state.dashboardReceipt;
+    main.innerHTML=title(1,'Đã ghi nhận bài nghe','Điểm nghe của em đã có trên cổng học tập. Em không cần làm lại phần nghe để nộp video.')+
+      `<section class="submission-panel"><h2>✓ Đã ghi điểm nghe: ${receipt.score}/${receipt.total}</h2><p>${esc(student.name)} · ${esc(student.className)} · ${esc(receipt.submittedAt)}</p><p>Em có thể xem mindmap, chuẩn bị hai video và nộp bài ở chặng tiếp theo.</p><button class="secondary" data-stage="map">Xem mindmap</button> <button class="primary" data-stage="talk">Mở phần nộp video →</button></section><section class="player"><strong>Nghe lại bài học</strong><audio controls preload="metadata" src="${esc(lesson.audio)}"></audio></section>${pauseFooter(null)}`;
+    audio=main.querySelector('audio');return;
+  }
   const count = logic.filled(lesson, state);
   const score = logic.score(lesson, state);
   const total = gaps.length;
@@ -99,7 +108,7 @@ async function checkScript() {
 }
 async function sendScore(){
   if(submissionInFlight)return submissionInFlight;
-  if(state.scoreReceipt||!state.firstAttempt)return;
+  if(state.scoreReceipt||state.dashboardReceipt||!state.firstAttempt)return;
   scoreStatus='sending';save();render();
   submissionInFlight=(async()=>{
     try{const receipt=await window.ScienceSystem.submitScore(student,state.firstAttempt);state.scoreReceipt=receipt;state.scriptSubmitted=true;scoreStatus='saved';save();render();notify('Đã ghi điểm nghe. Mindmap đã mở; em có thể học tiếp vào ngày khác.');}
@@ -128,7 +137,7 @@ function render() {
   if (!logic.allowed(lesson, state, current)) current = 'listen';
   nav();
   ({ listen:listenView, map:mapView, talk:talkView })[current]();
-  if (current === 'listen' && state.firstAttempt) {
+  if (current === 'listen' && state.firstAttempt && (!state.dashboardReceipt || state.scoreReceipt)) {
     const scoreBox = document.createElement('section'); scoreBox.className = 'first-score';
     scoreBox.innerHTML = `<div><p class="eyebrow">KẾT QUẢ TRƯỚC KHI XEM ĐÁP ÁN</p><strong>${state.firstAttempt.score}/${state.firstAttempt.total}</strong><span>${state.firstAttempt.score10.toLocaleString('vi-VN')} / 10 điểm</span></div><p>Mỗi ô đúng trọn từ hoặc cụm được 1 điểm. Điểm /10 = số ô đúng ÷ 30 × 10. Chữa lại bên dưới không thay đổi điểm lần đầu.</p>`;
     document.getElementById('check-result').before(scoreBox);
@@ -186,7 +195,13 @@ document.addEventListener('click', event => {
 });
 window.addEventListener('popstate',() => navigate(new URL(location.href).searchParams.get('stage') || 'listen',false));
 if(!state.scoreReceipt)state.scriptSubmitted=false;
-navigate(new URL(location.href).searchParams.get('stage') || state.lastStage,false);
+const requestedStage=new URL(location.href).searchParams.get('stage') || state.lastStage;
+navigate(requestedStage,false);
+window.addEventListener('storage',event=>{
+  if(!student||!window.ScienceResume||event.key!==window.ScienceResume.key(student,lesson.id.toUpperCase()))return;
+  state.dashboardReceipt=window.ScienceResume.read(localStorage,student,lesson.id.toUpperCase());
+  navigate(state.dashboardReceipt?requestedStage:current,false);
+});
 if(student&&state.firstAttempt&&!state.scoreReceipt)sendScore();
 if (document.modelContext?.registerTool) {
   const controller = new AbortController();

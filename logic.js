@@ -5,7 +5,8 @@
   const isCorrect = (gap, value) => [gap.answer, ...(gap.accept || [])].some(a => normalize(a) === normalize(value));
   const score = (lesson, state) => getGaps(lesson).filter(g => isCorrect(g, state.answers[g.id])).length;
   const allowed = (lesson, state, stage) => {
-    const scriptDone = !!state.scriptSubmitted && !!state.scoreReceipt && state.scoreReceipt.id === state.firstAttempt?.id;
+    const scriptDone = (!!state.scriptSubmitted && !!state.scoreReceipt && state.scoreReceipt.id === state.firstAttempt?.id) ||
+      !!(root.ScienceResume && root.ScienceResume.valid(state.dashboardReceipt,state.student,lesson.id.toUpperCase()));
     return stage === 'listen' || (stage === 'map' && scriptDone) || ((stage === 'talk' || stage === 'questions') && scriptDone);
   };
   const firstAttempt = (lesson, state, id, completedAt) => {

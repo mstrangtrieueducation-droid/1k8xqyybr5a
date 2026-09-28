@@ -3,7 +3,16 @@
   const config={classes:["KIDS 7", "KIDS 8", "KIDS 10", "KIDS 11", "KIDS 14", "KIDS 15", "KIDS 17", "KIDS 18", "KIDS 19", "KIDS 20", "KIDS 21", "KIDS 22", "KIDS 23", "KIDS 25", "KIDS 26", "KIDS 27", "KIDS 28", "KIDS 29", "KIDS 30", "KIDS 31", "KIDS 32", "KIDS 33", "KIDS 34", "KIDS 35", "KIDS 36", "KIDS 37", "KIDS 38", "KIDS 39", "KIDS 40"],videoForm:'https://docs.google.com/forms/d/e/1FAIpQLSf6T_4KVBN6LI9oFJl5cgnZPk0woNXjxmtlHFM7gWY6OJTHgg/viewform',videoEntries:{name:'entry.1366919347',className:'entry.961891111',code:'entry.989301220'},scoreForm:'https://docs.google.com/forms/d/e/1FAIpQLSf70nZdOXNSz7PGtMGckvVV6S4IJAT7sid9BBvhFEAbuEYd-A/viewform',scoreEntries:{name:'entry.626306593',className:'entry.567316915',code:'entry.1998956975',score:'entry.144780084',total:'entry.1804999547',percent:'entry.1191306277',attempt:'entry.552906711'}};
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const profileKey='science-g3-student-profile-v1';
-  function getProfile(){try{const p=JSON.parse(localStorage.getItem(profileKey)||'null');return p&&typeof p.name==='string'&&p.name.trim().length>=2&&config.classes.includes(p.className)?p:null;}catch{return null;}}
+  function getProfile(){
+    // Use the active parent's editable identity hint, not a sibling's last profile.
+    try{if(window.parent!==window){const u=new URL(window.parent.location.href),target=new URL(u.searchParams.get('lesson'));
+      if(u.origin===location.origin&&u.pathname==='/student-learning/'&&target.origin===location.origin&&target.pathname===location.pathname){
+        const name=(u.searchParams.get('mtt_english')||u.searchParams.get('mtt_name')||'').trim().replace(/\s+/g,' '),className=u.searchParams.get('mtt_class');
+        if(name.length>=2&&name.length<=60&&config.classes.includes(className))return {name,className};
+      }
+    }}catch{}
+    try{const p=JSON.parse(localStorage.getItem(profileKey)||'null');return p&&typeof p.name==='string'&&p.name.trim().length>=2&&config.classes.includes(p.className)?p:null;}catch{return null;}
+  }
   function key(p){return (window.SCIENCE_LESSON.id==='science-g3-01'?'science-g3-germs-v1:':window.SCIENCE_LESSON.id+'-v1:')+(p?encodeURIComponent(p.className+'|'+p.name.toLowerCase().trim().replace(/\s+/g,' ')):'preview');}
   function gate(main){
     main.innerHTML=`<p class="eyebrow">SCIENCE G3 · BÀI ${String(window.SCIENCE_LESSON.number).padStart(2,'0')}</p><h1>${escape(window.SCIENCE_LESSON.title)}</h1><p class="intro">Nghe và điền 30 từ, cụm từ → học mindmap → quay thuyết trình và trả lời câu hỏi → nộp cả hai video một lần. Mỗi chặng có thể làm vào một ngày khác nhau.</p><section class="profile-panel"><h2>Thông tin học sinh</h2><p>Ghi đúng tên tiếng Anh và chọn lớp để lưu tiến độ riêng của em.</p><form id="profile-form"><div class="profile-fields"><label>Tên tiếng Anh<input name="name" autocomplete="name" minlength="2" maxlength="60" required placeholder="Ví dụ: Anna"></label><label>Lớp<select name="className" required><option value="" selected disabled>Chọn lớp KIDS của em</option>${config.classes.map(c=>`<option>${c}</option>`).join('')}</select></label></div><button class="primary">Bắt đầu / Tiếp tục bài</button></form><p class="profile-help">Bài đang làm dở được lưu trên cùng thiết bị và trình duyệt. Bấm “Đã xong – Nộp bài” để tự ghi điểm nghe. Video có thể quay và nộp vào ngày khác.</p></section>`;
